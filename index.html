@@ -771,27 +771,24 @@
 
       function drawTextGlow(ctx) {
         const currentLines = CONFIG.messages[currentMessageIndex];
-        // Auto-fit: chữ chiếm ~30% chiều cao màn hình
-        const maxTextHeight = offscreen.height * 0.7;
-        const maxTextWidth = offscreen.width * 0.85;
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
+        const maxH = h * 0.7;
+        const maxW = w * 0.85;
         let fSize = CONFIG.fontSize;
 
-        // Tính font size dựa trên chiều cao
-        const idealByHeight = maxTextHeight / (lines.length * 1.3);
+        const idealByHeight = maxH / (currentLines.length * 1.3);
         fSize = Math.min(fSize, idealByHeight);
 
-        // Kiểm tra chiều rộng - tìm dòng dài nhất và co lại nếu tràn
-        offCtx.font = `${CONFIG.fontWeight} ${fSize}px ${CONFIG.fontFamily}`;
+        ctx.font = `${CONFIG.fontWeight} ${fSize}px ${CONFIG.fontFamily}`;
         let maxLineWidth = 0;
-        for (const line of lines) {
-          const w = offCtx.measureText(line).width;
-          if (w > maxLineWidth) maxLineWidth = w;
+        for (const line of currentLines) {
+          const m = ctx.measureText(line).width;
+          if (m > maxLineWidth) maxLineWidth = m;
         }
-        if (maxLineWidth > maxTextWidth) {
-          fSize = fSize * (maxTextWidth / maxLineWidth);
+        if (maxLineWidth > maxW) {
+          fSize = fSize * (maxW / maxLineWidth);
         }
-
-        // Giới hạn tối thiểu để vẫn đọc được
         fSize = Math.max(fSize, 18);
 
         ctx.save();
