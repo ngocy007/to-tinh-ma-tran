@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR Trai Tim</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #0a0a0a;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: "Segoe UI", Arial, sans-serif;
+        overflow: hidden;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+      }
+
+      #qrCanvas {
+        animation: heartbeat 1.2s ease-in-out infinite;
+        filter: drop-shadow(0 0 25px rgba(255, 45, 85, 0.5))
+          drop-shadow(0 0 50px rgba(255, 45, 85, 0.25));
+        border-radius: 18px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+      }
+
+      #qrCanvas:hover {
+        transform: scale(1.06);
+      }
+
+      @keyframes heartbeat {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        15% {
+          transform: scale(1.06);
+        }
+        30% {
+          transform: scale(1);
+        }
+        45% {
+          transform: scale(1.04);
+        }
+        60% {
+          transform: scale(1);
+        }
+      }
+
+      .text-main {
+        color: #ff2d55;
+        font-size: 20px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        text-align: center;
+        text-shadow: 0 0 20px rgba(255, 45, 85, 0.4);
+      }
+
+      .text-sub {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 14px;
+        text-align: center;
+        animation: blink 2s ease-in-out infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 0.5;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* Floating hearts background */
+      .floating-heart {
+        position: fixed;
+        color: rgba(255, 45, 85, 0.15);
+        pointer-events: none;
+        animation: floatUp linear infinite;
+      }
+
+      @keyframes floatUp {
+        0% {
+          transform: translateY(100vh) rotate(0deg);
+          opacity: 0;
+        }
+        10% {
+          opacity: 1;
+        }
+        90% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-10vh) rotate(360deg);
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <canvas id="qrCanvas"></canvas>
+      <div class="text-main">Quet ma QR de mo bat ngo ❤️</div>
+      <div class="text-sub">Danh rieng cho anh</div>
+    </div>
+
+    <script>
+      // ============== CONFIG ==============
+      const QR_URL = "https://ngocy007.github.io/to-tinh-ma-tran";
+      const DISPLAY_SIZE = 280; // CSS pixel size
+
+      // ============== FLOATING HEARTS BG ==============
+      function createFloatingHearts() {
+        const hearts = ["❤", "♥", "💕", "💗"];
+        for (let i = 0; i < 15; i++) {
+          const el = document.createElement("div");
+          el.className = "floating-heart";
+          el.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+          el.style.left = Math.random() * 100 + "vw";
+          el.style.fontSize = 12 + Math.random() * 24 + "px";
+          el.style.animationDuration = 6 + Math.random() * 8 + "s";
+          el.style.animationDelay = Math.random() * 10 + "s";
+          document.body.appendChild(el);
+        }
+      }
+      createFloatingHearts();
+
+      // ============== QR CODE GENERATION ==============
+      function renderHeartQR() {
+        var qr = qrcode(0, "H");
+        qr.addData(QR_URL);
+        qr.make();
+
+        var canvas = document.getElementById("qrCanvas");
+        var mc = qr.getModuleCount();
+        var cell = 8;
+        var quiet = 2;
+        var size = (mc + quiet * 2) * cell;
+
+        canvas.width = size;
+        canvas.height = size;
+        canvas.style.width = DISPLAY_SIZE + "px";
+        canvas.style.height = DISPLAY_SIZE + "px";
+
+        var ctx = canvas.getContext("2d");
+
+        // White rounded background
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        rrect(ctx, 0, 0, size, size, 10);
+        ctx.fill();
+
+        var centerC = mc / 2;
+        var centerR = mc / 2;
+        var heartZone = mc * 0.16;
+
+        // Draw QR modules
+        for (var r = 0; r < mc; r++) {
+          for (var c = 0; c < mc; c++) {
+            var dx = c - centerC + 0.5;
+            var dy = r - centerR + 0.5;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Skip center for heart
+            if (dist < heartZone) continue;
+
+            if (qr.isDark(r, c)) {
+              var x = (quiet + c) * cell;
+              var y = (quiet + r) * cell;
+
+              // Color gradient: red center -> darker outside
+              var t = Math.min(dist / (mc * 0.55), 1);
+              ctx.fillStyle =
+                "rgb(" +
+                Math.round(255 - 60 * t) +
+                "," +
+                Math.round(45 + 15 * t) +
+                "," +
+                Math.round(85 + 25 * t) +
+                ")";
+
+              // Rounded dot
+              var ds = cell * 0.85;
+              var off = (cell - ds) / 2;
+              ctx.beginPath();
+              rrect(ctx, x + off, y + off, ds, ds, ds * 0.3);
+              ctx.fill();
+            }
+          }
+        }
+
+        // Heart in center
+        ctx.fillStyle = "#ff2d55";
+        var hx = (quiet + centerC) * cell;
+        var hy = (quiet + centerR) * cell;
+        var hs = heartZone * cell * 1.4;
+        drawHeart(ctx, hx, hy, hs);
+      }
+
+      function rrect(ctx, x, y, w, h, r) {
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+
+      function drawHeart(ctx, cx, cy, size) {
+        ctx.beginPath();
+        for (var i = 0; i <= 100; i++) {
+          var t = (i / 100) * Math.PI * 2;
+          var px = 16 * Math.pow(Math.sin(t), 3);
+          var py = -(
+            13 * Math.cos(t) -
+            5 * Math.cos(2 * t) -
+            2 * Math.cos(3 * t) -
+            Math.cos(4 * t)
+          );
+          var drawX = cx + (px * size) / 34;
+          var drawY = cy + (py * size) / 34;
+          if (i === 0) ctx.moveTo(drawX, drawY);
+          else ctx.lineTo(drawX, drawY);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      renderHeartQR();
+    </script>
+  </body>
+</html>
