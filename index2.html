@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Happy Valentine</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #000;
+        overflow: hidden;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      canvas {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      #matrixCanvas {
+        z-index: 1;
+      }
+
+      #textCanvas {
+        z-index: 2;
+      }
+
+      /* --- INTRO HEART SCREEN --- */
+      #introScreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #introScreen.burst {
+        pointer-events: none;
+      }
+
+      .heart-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .heart {
+        font-size: 120px;
+        color: #ff2d55;
+        animation: heartbeat 1.2s ease-in-out infinite;
+        filter: drop-shadow(0 0 30px rgba(255, 45, 85, 0.6))
+          drop-shadow(0 0 60px rgba(255, 45, 85, 0.3));
+        transition: transform 0.3s ease;
+      }
+
+      .heart:hover {
+        transform: scale(1.15);
+      }
+
+      .intro-text {
+        color: rgba(255, 255, 255, 0.6);
+        font-family: "Segoe UI", Arial, sans-serif;
+        font-size: 16px;
+        margin-top: 30px;
+        animation: blink 2s ease-in-out infinite;
+        letter-spacing: 2px;
+      }
+
+      .intro-hint {
+        color: rgba(255, 255, 255, 0.3);
+        font-family: "Segoe UI", Arial, sans-serif;
+        font-size: 13px;
+        margin-top: 12px;
+      }
+
+      @keyframes heartbeat {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        15% {
+          transform: scale(1.15);
+        }
+        30% {
+          transform: scale(1);
+        }
+        45% {
+          transform: scale(1.1);
+        }
+        60% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* Heart burst particles */
+      .burst-particle {
+        position: fixed;
+        font-size: 24px;
+        pointer-events: none;
+        z-index: 101;
+        opacity: 1;
+      }
+
+      /* Fade out intro */
+      #introScreen.fade-out {
+        animation: fadeOutIntro 0.8s ease forwards;
+      }
+
+      @keyframes fadeOutIntro {
+        0% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- INTRO SCREEN -->
+    <div id="introScreen">
+      <div class="heart-wrapper">
+        <div class="heart" id="heartIcon">❤️</div>
+      </div>
+      <div class="intro-text">Bấm vào trái tim</div>
+      <div class="intro-hint">để mở bất ngờ</div>
+    </div>
+
+    <canvas id="matrixCanvas"></canvas>
+    <canvas id="textCanvas"></canvas>
+
+    <!-- Background Music -->
+    <audio id="bgMusic" loop>
+      <source
+        src="Anh Là Ngoại Lệ Của Em _ YouTube Music.mp3"
+        type="audio/mpeg"
+      />
+    </audio>
+
+    <script>
+      // ============== CẤU HÌNH DỄ THAY ĐỔI ==============
+      const CONFIG = {
+        // ========= DANH SÁCH CÂU - THÊM BAO NHIÊU CÂU CŨNG ĐƯỢC =========
+        messages: [
+          ["Chúc mừng em", "đã trúng thưởng:", "1 người yêu", "siêu đáng yêu"],
+          ["Mở ra là thấy", "Anh nhớ em"],
+          ["QR này chỉ dẫn tới", "trái tim Anh thôi"],
+          ["Em là", "phần thưởng", "duy nhất"],
+          ["Cảm ơn em", "đã xuất hiện", "và làm cuộc sống Anh", "dịu dàng hơn"],
+          ["Dù sau này", "thế nào", "Anh vẫn muốn nắm tay", "em lâu thật lâu"],
+          ["Em không hoàn hảo", "nhưng là người", "Anh muốn chọn", "mỗi ngày"],
+          ["Thương em", "không phải vì", "điều gì", "chỉ vì là em"],
+          ["Nếu có 1 điều ước", "Anh ước mình", "bên nhau thật dài"],
+          ["Hết nội dung", "nhưng chưa hết", "thương nhé", "😘❤️"],
+        ],
+        // ===================================================================
+
+        // Font chữ chính
+        fontSize: 150,
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontWeight: "bold",
+        textColor: "#FFFFFF",
+
+        // Màu ký tự matrix rơi
+        matrixColor: "rgba(0, 255, 65, 0.45)",
+        matrixFadeBg: "rgba(0, 0, 0, 0.07)",
+
+        // Tốc độ ký tự matrix rơi
+        matrixSpeed: 33,
+
+        // Ký tự dùng cho matrix rain
+        matrixChars:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()valentineVALENTINEyêuthương♥❤",
+
+        // Kích thước font matrix
+        matrixFontSize: 16,
+
+        // Thời gian (ms) matrix rơi trước khi tụ chữ câu đầu
+        firstGatherDelay: 3000,
+
+        // Thời gian (ms) để particle tụ lại thành chữ
+        gatherDuration: 2500,
+
+        // Thời gian (ms) giữ chữ
+        holdDuration: 3500,
+
+        // Thời gian (ms) tan ra rồi tụ lại thành câu mới (morph)
+        morphDuration: 2500,
+
+        // Lặp lại từ đầu
+        loop: false,
+
+        // Thời gian chờ trước khi lặp (ms)
+        loopDelay: 2000,
+
+        // Mật độ particle (số càng nhỏ = nhiều particle hơn)
+        particleDensity: 3,
+
+        // Màu particle khi bay
+        particleFreeColor: "#FFFFFF",
+
+        // Kích thước particle
+        particleSize: 2.5,
+
+        // Glow
+        glowColor: "rgba(255, 255, 255, 0.3)",
+        glowBlur: 20,
+      };
+      // ====================================================
+
+      // =================== INTRO HEART ====================
+      const introScreen = document.getElementById("introScreen");
+      const heartIcon = document.getElementById("heartIcon");
+      let mainStarted = false;
+
+      function createBurstParticles() {
+        const emojis = [
+          "❤️",
+          "💕",
+          "💖",
+          "💗",
+          "💘",
+          "💝",
+          "✨",
+          "💫",
+          "🌟",
+          "💞",
+          "💓",
+          "💜",
+          "💛",
+          "🩷",
+          "🩵",
+        ];
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        const count = 35;
+
+        for (let i = 0; i < count; i++) {
+          const el = document.createElement("div");
+          el.className = "burst-particle";
+          el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+          el.style.left = cx + "px";
+          el.style.top = cy + "px";
+          el.style.fontSize = 16 + Math.random() * 30 + "px";
+          document.body.appendChild(el);
+
+          const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+          const speed = 200 + Math.random() * 350;
+          const destX = cx + Math.cos(angle) * speed;
+          const destY = cy + Math.sin(angle) * speed - 50;
+          const rotation = (Math.random() - 0.5) * 720;
+          const duration = 800 + Math.random() * 600;
+
+          el.animate(
+            [
+              {
+                left: cx + "px",
+                top: cy + "px",
+                opacity: 1,
+                transform: "scale(0.3) rotate(0deg)",
+              },
+              {
+                left: destX + "px",
+                top: destY + "px",
+                opacity: 0,
+                transform: `scale(1.2) rotate(${rotation}deg)`,
+              },
+            ],
+            {
+              duration: duration,
+              easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+              fill: "forwards",
+            },
+          );
+
+          setTimeout(() => el.remove(), duration + 50);
+        }
+      }
+
+      introScreen.addEventListener("click", () => {
+        if (mainStarted) return;
+        mainStarted = true;
+
+        // Play background music
+        const bgMusic = document.getElementById("bgMusic");
+        bgMusic.play().catch((err) => console.log("Audio play failed:", err));
+
+        // Burst effect
+        introScreen.classList.add("burst");
+        heartIcon.style.animation = "none";
+
+        // Heart nổ to rồi biến mất
+        heartIcon.animate(
+          [
+            { transform: "scale(1)", opacity: 1 },
+            { transform: "scale(2.5)", opacity: 0.8 },
+            { transform: "scale(0)", opacity: 0 },
+          ],
+          { duration: 500, easing: "ease-out", fill: "forwards" },
+        );
+
+        createBurstParticles();
+
+        // Fade out intro screen
+        setTimeout(() => {
+          introScreen.classList.add("fade-out");
+        }, 400);
+
+        // Remove intro & start main
+        setTimeout(() => {
+          introScreen.remove();
+          startMainAnimation();
+        }, 1200);
+      });
+
+      // =================== MAIN ANIMATION ====================
+
+      const matrixCanvas = document.getElementById("matrixCanvas");
+      const matrixCtx = matrixCanvas.getContext("2d");
+
+      function resizeMatrix() {
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+      }
+      resizeMatrix();
+
+      const matrixChars = CONFIG.matrixChars.split("");
+      const matrixFontSize = CONFIG.matrixFontSize;
+      let columns = Math.floor(matrixCanvas.width / matrixFontSize);
+      let drops = Array(columns).fill(1);
+      let matrixInterval = null;
+
+      function drawMatrix() {
+        matrixCtx.fillStyle = CONFIG.matrixFadeBg;
+        matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+        matrixCtx.fillStyle = CONFIG.matrixColor;
+        matrixCtx.font = matrixFontSize + "px monospace";
+
+        for (let i = 0; i < drops.length; i++) {
+          const char =
+            matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          matrixCtx.fillText(
+            char,
+            i * matrixFontSize,
+            drops[i] * matrixFontSize,
+          );
+
+          if (
+            drops[i] * matrixFontSize > matrixCanvas.height &&
+            Math.random() > 0.975
+          ) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+      }
+
+      const textCanvas = document.getElementById("textCanvas");
+      const textCtx = textCanvas.getContext("2d");
+
+      function resizeText() {
+        textCanvas.width = window.innerWidth;
+        textCanvas.height = window.innerHeight;
+      }
+      resizeText();
+
+      let currentMessageIndex = 0;
+
+      window.addEventListener("resize", () => {
+        resizeMatrix();
+        resizeText();
+        columns = Math.floor(matrixCanvas.width / matrixFontSize);
+        drops = Array(columns).fill(1);
+      });
+
+      function getTextPixels(lines) {
+        const offscreen = document.createElement("canvas");
+        offscreen.width = textCanvas.width;
+        offscreen.height = textCanvas.height;
+        const offCtx = offscreen.getContext("2d");
+
+        offCtx.fillStyle = "#000";
+        offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
+
+        // Auto-fit: chữ chiếm ~30% chiều cao màn hình
+        const maxTextHeight = offscreen.height * 0.7;
+        const maxTextWidth = offscreen.width * 0.85;
+        let fSize = CONFIG.fontSize;
+
+        // Tính font size dựa trên chiều cao
+        const idealByHeight = maxTextHeight / (lines.length * 1.3);
+        fSize = Math.min(fSize, idealByHeight);
+
+        // Kiểm tra chiều rộng - tìm dòng dài nhất và co lại nếu tràn
+        offCtx.font = `${CONFIG.fontWeight} ${fSize}px ${CONFIG.fontFamily}`;
+        let maxLineWidth = 0;
+        for (const line of lines) {
+          const w = offCtx.measureText(line).width;
+          if (w > maxLineWidth) maxLineWidth = w;
+        }
+        if (maxLineWidth > maxTextWidth) {
+          fSize = fSize * (maxTextWidth / maxLineWidth);
+        }
+
+        // Giới hạn tối thiểu để vẫn đọc được
+        fSize = Math.max(fSize, 18);
+
+        offCtx.font = `${CONFIG.fontWeight} ${fSize}px ${CONFIG.fontFamily}`;
+        offCtx.fillStyle = "#FFF";
+        offCtx.textAlign = "center";
+        offCtx.textBaseline = "middle";
+
+        const lineHeight = fSize * 1.3;
+        const totalHeight = lines.length * lineHeight;
+        const startY = (offscreen.height - totalHeight) / 2 + lineHeight / 2;
+
+        for (let i = 0; i < lines.length; i++) {
+          offCtx.fillText(
+            lines[i],
+            offscreen.width / 2,
+            startY + i * lineHeight,
+          );
+        }
+
+        const imageData = offCtx.getImageData(
+          0,
+          0,
+          offscreen.width,
+          offscreen.height,
+        );
+        const pixels = [];
+        const density = CONFIG.particleDensity;
+
+        for (let y = 0; y < offscreen.height; y += density) {
+          for (let x = 0; x < offscreen.width; x += density) {
+            const index = (y * offscreen.width + x) * 4;
+            if (imageData.data[index] > 128) {
+              pixels.push({ x, y });
+            }
+          }
+        }
+
+        return pixels;
+      }
+
+      class Particle {
+        constructor() {
+          this.x = 0;
+          this.y = 0;
+          this.targetX = 0;
+          this.targetY = 0;
+          this.currentX = Math.random() * textCanvas.width;
+          this.currentY = Math.random() * textCanvas.height * -0.5;
+          this.size = CONFIG.particleSize;
+          this.char =
+            matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          this.speed = 0.5 + Math.random() * 2;
+          this.alpha = 1;
+          this.gathered = false;
+          this.alive = true;
+        }
+
+        updateFalling() {
+          this.currentY += this.speed * 2;
+          if (this.currentY > textCanvas.height) {
+            this.currentY = -20;
+            this.currentX = Math.random() * textCanvas.width;
+          }
+          this.char =
+            matrixChars[Math.floor(Math.random() * matrixChars.length)];
+        }
+
+        updateGathering(progress) {
+          const ease =
+            progress < 0.5
+              ? 4 * progress * progress * progress
+              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+          this.currentX = this.x + (this.targetX - this.x) * ease;
+          this.currentY = this.y + (this.targetY - this.y) * ease;
+          this.gathered = progress > 0.7;
+
+          if (Math.random() < 0.1) {
+            this.char =
+              matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          }
+        }
+
+        updateHolding() {
+          this.currentX = this.targetX;
+          this.currentY = this.targetY;
+          this.gathered = true;
+        }
+
+        updateMorphing(progress) {
+          if (progress <= 0.4) {
+            const scatterProgress = progress / 0.4;
+            const ease =
+              scatterProgress < 0.5
+                ? 2 * scatterProgress * scatterProgress
+                : 1 - Math.pow(-2 * scatterProgress + 2, 2) / 2;
+
+            const midX = (this.x + this.targetX) / 2 + this.scatterOffsetX;
+            const midY = (this.y + this.targetY) / 2 + this.scatterOffsetY;
+
+            this.currentX = this.x + (midX - this.x) * ease;
+            this.currentY = this.y + (midY - this.y) * ease;
+            this.gathered = false;
+          } else {
+            const gatherProgress = (progress - 0.4) / 0.6;
+            const ease =
+              gatherProgress < 0.5
+                ? 4 * gatherProgress * gatherProgress * gatherProgress
+                : 1 - Math.pow(-2 * gatherProgress + 2, 3) / 2;
+
+            const midX = (this.x + this.targetX) / 2 + this.scatterOffsetX;
+            const midY = (this.y + this.targetY) / 2 + this.scatterOffsetY;
+
+            this.currentX = midX + (this.targetX - midX) * ease;
+            this.currentY = midY + (this.targetY - midY) * ease;
+            this.gathered = gatherProgress > 0.7;
+          }
+
+          if (Math.random() < 0.08) {
+            this.char =
+              matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          }
+        }
+
+        updateFadeOut(progress) {
+          const scatterProgress = Math.min(progress / 0.5, 1);
+          this.currentX = this.x + this.scatterOffsetX * scatterProgress * 1.5;
+          this.currentY = this.y + this.scatterOffsetY * scatterProgress * 1.5;
+          this.alpha = 1 - progress;
+          this.gathered = false;
+        }
+
+        draw(ctx) {
+          if (this.alpha <= 0) return;
+
+          ctx.globalAlpha = this.alpha;
+
+          if (this.gathered) {
+            ctx.fillStyle = CONFIG.textColor;
+            ctx.fillRect(this.currentX, this.currentY, this.size, this.size);
+          } else {
+            ctx.fillStyle = CONFIG.particleFreeColor;
+            ctx.font = `${CONFIG.matrixFontSize * 0.7}px monospace`;
+            ctx.fillText(this.char, this.currentX, this.currentY);
+          }
+
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      let particles = [];
+      let extraParticles = [];
+
+      function createInitialParticles(pixels) {
+        particles = [];
+        for (const pixel of pixels) {
+          const p = new Particle();
+          p.targetX = pixel.x;
+          p.targetY = pixel.y;
+          particles.push(p);
+        }
+      }
+
+      function morphToNewTargets(newPixels) {
+        extraParticles = [];
+        const shuffled = [...newPixels].sort(() => Math.random() - 0.5);
+
+        if (particles.length <= shuffled.length) {
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x = p.currentX;
+            p.y = p.currentY;
+            p.targetX = shuffled[i].x;
+            p.targetY = shuffled[i].y;
+            p.gathered = false;
+            p.alpha = 1;
+            p.scatterOffsetX = (Math.random() - 0.5) * 300;
+            p.scatterOffsetY = (Math.random() - 0.5) * 200;
+          }
+
+          for (let i = particles.length; i < shuffled.length; i++) {
+            const p = new Particle();
+            p.currentX =
+              textCanvas.width / 2 + (Math.random() - 0.5) * textCanvas.width;
+            p.currentY =
+              textCanvas.height / 2 + (Math.random() - 0.5) * textCanvas.height;
+            p.x = p.currentX;
+            p.y = p.currentY;
+            p.targetX = shuffled[i].x;
+            p.targetY = shuffled[i].y;
+            p.gathered = false;
+            p.alpha = 0;
+            p.scatterOffsetX = (Math.random() - 0.5) * 300;
+            p.scatterOffsetY = (Math.random() - 0.5) * 200;
+            particles.push(p);
+          }
+        } else {
+          for (let i = 0; i < shuffled.length; i++) {
+            const p = particles[i];
+            p.x = p.currentX;
+            p.y = p.currentY;
+            p.targetX = shuffled[i].x;
+            p.targetY = shuffled[i].y;
+            p.gathered = false;
+            p.alpha = 1;
+            p.scatterOffsetX = (Math.random() - 0.5) * 300;
+            p.scatterOffsetY = (Math.random() - 0.5) * 200;
+          }
+
+          for (let i = shuffled.length; i < particles.length; i++) {
+            const p = particles[i];
+            p.x = p.currentX;
+            p.y = p.currentY;
+            p.scatterOffsetX = (Math.random() - 0.5) * 400;
+            p.scatterOffsetY = (Math.random() - 0.5) * 300;
+            extraParticles.push(p);
+          }
+
+          particles = particles.slice(0, shuffled.length);
+        }
+      }
+
+      let animState = "idle";
+      let stateStartTime = 0;
+      let animStartTime = 0;
+
+      function setState(state) {
+        animState = state;
+        stateStartTime = Date.now();
+      }
+
+      function goToNextMessage() {
+        currentMessageIndex++;
+
+        if (currentMessageIndex >= CONFIG.messages.length) {
+          if (CONFIG.loop) {
+            currentMessageIndex = 0;
+          } else {
+            animState = "done";
+            return;
+          }
+        }
+
+        const newPixels = getTextPixels(CONFIG.messages[currentMessageIndex]);
+        morphToNewTargets(newPixels);
+        setState("morphing");
+      }
+
+      // Bắt đầu animation chính sau khi bấm trái tim
+      function startMainAnimation() {
+        matrixInterval = setInterval(drawMatrix, CONFIG.matrixSpeed);
+
+        const firstPixels = getTextPixels(CONFIG.messages[0]);
+        createInitialParticles(firstPixels);
+        animStartTime = Date.now();
+        setState("falling");
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        if (animState === "idle") return;
+
+        textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+
+        const now = Date.now();
+        const elapsed = now - stateStartTime;
+        const totalElapsed = now - animStartTime;
+
+        switch (animState) {
+          case "falling":
+            for (const p of particles) {
+              p.updateFalling();
+              p.draw(textCtx);
+            }
+            if (totalElapsed > CONFIG.firstGatherDelay) {
+              for (const p of particles) {
+                p.x = p.currentX;
+                p.y = p.currentY;
+              }
+              setState("gathering");
+            }
+            break;
+
+          case "gathering": {
+            const progress = Math.min(elapsed / CONFIG.gatherDuration, 1);
+            for (const p of particles) {
+              p.updateGathering(progress);
+              p.draw(textCtx);
+            }
+
+            if (progress >= 1) {
+              setState("holding");
+            }
+            break;
+          }
+
+          case "holding":
+            for (const p of particles) {
+              p.updateHolding();
+              p.draw(textCtx);
+            }
+            drawTextGlow(textCtx);
+
+            if (elapsed > CONFIG.holdDuration) {
+              goToNextMessage();
+            }
+            break;
+
+          case "morphing": {
+            const progress = Math.min(elapsed / CONFIG.morphDuration, 1);
+
+            for (const p of particles) {
+              p.updateMorphing(progress);
+              if (p.alpha < 1 && progress < 0.6) {
+                p.alpha = Math.min(progress / 0.4, 1);
+              } else if (progress >= 0.6) {
+                p.alpha = 1;
+              }
+              p.draw(textCtx);
+            }
+
+            for (const p of extraParticles) {
+              p.updateFadeOut(progress);
+              p.draw(textCtx);
+            }
+
+            if (progress >= 1) {
+              extraParticles = [];
+              setState("holding");
+            }
+            break;
+          }
+
+          case "done":
+            for (const p of particles) {
+              p.updateHolding();
+              p.draw(textCtx);
+            }
+            drawTextGlow(textCtx);
+            break;
+        }
+      }
+
+      function drawTextGlow(ctx) {
+        const currentLines = CONFIG.messages[currentMessageIndex];
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
+        const maxH = h * 0.7;
+        const maxW = w * 0.85;
+        let fSize = CONFIG.fontSize;
+
+        const idealByHeight = maxH / (currentLines.length * 1.3);
+        fSize = Math.min(fSize, idealByHeight);
+
+        ctx.font = `${CONFIG.fontWeight} ${fSize}px ${CONFIG.fontFamily}`;
+        let maxLineWidth = 0;
+        for (const line of currentLines) {
+          const m = ctx.measureText(line).width;
+          if (m > maxLineWidth) maxLineWidth = m;
+        }
+        if (maxLineWidth > maxW) {
+          fSize = fSize * (maxW / maxLineWidth);
+        }
+        fSize = Math.max(fSize, 18);
+
+        ctx.save();
+        ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+        ctx.shadowBlur = CONFIG.glowBlur;
+        ctx.font = `${CONFIG.fontWeight} ${fSize}px ${CONFIG.fontFamily}`;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const lineHeight = fSize * 1.3;
+        const totalHeight = currentLines.length * lineHeight;
+        const startY = (ctx.canvas.height - totalHeight) / 2 + lineHeight / 2;
+
+        for (let i = 0; i < currentLines.length; i++) {
+          ctx.fillText(
+            currentLines[i],
+            ctx.canvas.width / 2,
+            startY + i * lineHeight,
+          );
+        }
+        ctx.restore();
+      }
+
+      animate();
+    </script>
+  </body>
+</html>
